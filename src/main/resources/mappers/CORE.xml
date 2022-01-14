@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="CORE">
+
+	<select id="selectLandingPage" parameterType="java.lang.String" resultType="resultMap">
+        SELECT
+        	(SELECT 
+				CONCAT(SERVERURL,':',SERVERPORT,'/',SERVERPATH,HREF)
+			FROM 
+				GEOCMS_SERVER) AS HREF
+        	,REL
+        	,TYPE
+        	,TITLE
+        FROM 
+        	geosys.CORE_LANDING_PAGE
+        ORDER BY ID ASC
+	</select>
+	
+	<select id="selectServerInfo" parameterType="paramMap" resultType="resultMap">
+        SELECT 
+        	ID
+        	,SERVERNAME
+        	,SERVERURL
+        	,SERVERPORT
+        	,SERVERID
+        	,SERVERPASS
+        	,SERVERPATH
+        	,SERVERVIEWPORT
+        	,SELECTYN
+        	,TO_CHAR(RDATE,'YYYY-mm-dd') RDATE
+        	,TO_CHAR(UDATE,'YYYY-mm-dd') UDATE
+        FROM 
+        	geosys.GEOCMS_SERVER
+	</select>
+
+	<select id="selectLayers" parameterType="paramMap" resultType="resultMap">
+        SELECT 
+        	ID
+        	,PROJECTNAME
+        	,SHARETYPE
+        	,TO_CHAR(RDATE,'YYYY-mm-dd') RDATE
+        	,TO_CHAR(UDATE,'YYYY-mm-dd') UDATE
+        FROM 
+        	geosys.GEOCMS_PROJECT_CONTENT
+	</select>
+
+
+	<update id="createNewTable" parameterType="java.lang.String">
+		${value}
+	</update>
+
+
+</mapper>

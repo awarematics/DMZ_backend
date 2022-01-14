@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="REST">
+
+	<select id="selectLandingPage" parameterType="java.lang.String" resultType="resultMap">
+        SELECT
+        	(SELECT 
+				CONCAT(SERVERURL,':',SERVERPORT,'/',SERVERPATH,HREF)
+			FROM 
+				geosys.GEOCMS_SERVER) AS HREF
+        	,REL
+        	,TYPE
+        	,TITLE
+        FROM 
+        	geosys.LANDING_PAGE
+        ORDER BY ID ASC
+	</select>
+
+	<update id="createNewTable" parameterType="java.lang.String">
+		${value}
+	</update>
+	
+	<insert id="insertMgeometryColumns" parameterType="paramMap">
+		INSERT INTO mgeometry_columns (
+			  f_table_catalog
+			, f_table_schema
+			, f_table_name
+			, f_mgeometry_column
+			, f_mgeometry_segtable_name
+			, mgeometry_compress
+			, coord_dimension
+			, srid
+			, "type"
+			, f_segtableoid
+			, f_sequence_name
+			, tpseg_size
+		) VALUES (
+			  ''
+			, 'public'
+			, #{tbName}
+			, #{trajColumn}
+			, #{tbName}
+			, ''
+			, 2
+			, 4326
+			, #{trajType}
+			, ''
+			, ''
+			, 100
+		)		
+	</insert>
+	
+	<update id="addMgeometryColumns" parameterType="paramMap">
+		select addmgeometrycolumn('public',#{tbName},'traj',4326,'mpoint',2,1);
+	</update>
+	
+	<update id="deleteMgeometryColumns" parameterType="paramMap">
+		select deletemgeometrycolumn('public',#{tbName},'traj','mpoint');
+	</update>
+	
+	<update id="dropMFCollection" parameterType="paramMap">
+		DROP TABLE IF EXISTS ${tbName}
+	</update>
+	
+	<select id="isMFCollection" parameterType="paramMap" resultType="Integer">
+		SELECT COUNT(*) FROM pg_tables 
+		WHERE schemaname = 'public' AND tablename = #{tbName};
+	</select>
+
+	<select id="selectMFCollections" parameterType="java.lang.String" resultType="resultMap">
+        SELECT
+        	  f_table_name AS NAME
+        	, f_table_name AS TITLE
+        FROM 
+        	mgeometry_columns
+        GROUP BY 
+			f_table_name
+		ORDER BY f_table_name
+	</select>
+	
+	<select id="selectMFCollection" parameterType="java.lang.String" resultType="String">		
+		SELECT
+			row_to_json(fc)
+		FROM
+		(
+			SELECT
+				'FeatureCollection' as "type",
+				array_to_json(array_agg(f)) as "features"
+			FROM
+			(
+				SELECT					
+					'Feature' as "type",
+					ST_AsGeoJSON(M_Spatial(traj), 6) :: json as "geometry",
+					(
+						SELECT
+							json_strip_nulls(row_to_json(t))
+						FROM
+						(
+							SELECT
+								row_num,
+								track_id,
+								class_id,
+								video_uri_id
+						) t 
+					) AS "properties"
+				FROM
+				(
+					SELECT 
+						ROW_NUMBER() OVER( PARTITION BY class_id ORDER BY track_id ) AS row_num
+						, traj
+						, track_id
+						, class_id
+						, video_uri_id
+					FROM ${tbName}					 
+					<if test="classId != null and classId != ''">
+					WHERE class_id = #{classId} 
+					</if>					 
+					GROUP BY traj, track_id, class_id, video_uri_id
+					ORDER BY class_id,track_id
+				) a
+			) AS f 
+		) AS fc
+	</select>
+	
+	<select id="selectMFCollectionAbbr" parameterType="java.lang.String" resultType="String">		 
+		SELECT
+			row_to_json(fc)
+		FROM
+		(
+			SELECT				
+				array_to_json(array_agg(f)) as "collections"
+			FROM
+			(
+				SELECT
+					class_id					
+				FROM
+					${tbName}
+				GROUP BY class_id
+			) AS f 
+		) AS fc
+	</select>
+	
+	
+
+</mapper>
